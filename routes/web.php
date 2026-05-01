@@ -34,6 +34,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/grades', [\App\Http\Controllers\Teacher\GradeController::class, 'index'])->name('grades.index');
         Route::get('/grades/sheet/{subject}/{section}', [\App\Http\Controllers\Teacher\GradeController::class, 'sheet'])->name('grades.sheet');
         Route::post('/grades/sheet/update', [\App\Http\Controllers\Teacher\GradeController::class, 'updateSheet'])->name('grades.update-sheet');
+        Route::post('/grades/sheet/finalize', [\App\Http\Controllers\Teacher\GradeController::class, 'finalizeSheet'])->name('grades.finalize-sheet');
+
+        // Adviser Routes
+        Route::get('/adviser/section/{section}/students', [\App\Http\Controllers\AdviserController::class, 'students'])->name('adviser.students');
+        Route::post('/adviser/section/{section}/students', [\App\Http\Controllers\AdviserController::class, 'storeStudent'])->name('adviser.store-student');
+        Route::get('/adviser/section/{section}/subjects', [\App\Http\Controllers\AdviserController::class, 'subjects'])->name('adviser.subjects');
+        Route::post('/adviser/section/{section}/subjects', [\App\Http\Controllers\AdviserController::class, 'storeSubject'])->name('adviser.store-subject');
+        
+        // Unlock Request
+        Route::post('/grades/request-unlock', [\App\Http\Controllers\Teacher\GradeController::class, 'requestUnlock'])->name('grades.request-unlock');
+    });
+
+    // Admin Unlock Requests
+    Route::middleware(['role:Admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/unlock-requests', [\App\Http\Controllers\Admin\DashboardController::class, 'unlockRequests'])->name('unlock-requests');
+        Route::post('/unlock-requests/{unlockRequest}/process', [\App\Http\Controllers\Admin\DashboardController::class, 'processUnlockRequest'])->name('unlock-requests.process');
     });
 });
 

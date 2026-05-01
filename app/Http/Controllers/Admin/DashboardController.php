@@ -9,7 +9,9 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $pendingRequestsCount = \App\Models\GradeUnlockRequest::where('status', 'pending')->count();
         $heatmapData = cache()->remember('admin_heatmap', 30, function () {
+            // ... existing heatmap logic ...
             $sections = \App\Models\Section::with(['subjectTeacherSections.subject', 'subjectTeacherSections.teacher'])->get();
             
             $submissionStatus = \App\Models\Grade::select('subject_id', 'section_id', \Illuminate\Support\Facades\DB::raw('MAX(CASE WHEN is_finalized = true THEN 2 WHEN grade IS NOT NULL THEN 1 ELSE 0 END) as status_code'))
@@ -37,6 +39,37 @@ class DashboardController extends Controller
             });
         });
 
-        return view('admin.dashboard', compact('heatmapData'));
+        return view('admin.dashboard', compact('heatmapData', 'pendingRequestsCount'));
+    }
+
+    public function unlockRequests()
+    {
+        $requests = \App\Models\GradeUnlockRequest::with(['teacher', 'subject', 'section'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return view('admin.unlock-requests', compact('requests'));
+    }
+
+    public function processUnlockRequest(Request $request, \App\Models\GradeUnlockRequest $unlockRequest)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected',
+        ]);
+
+        $unlockRequest->update(['status' => $validated['status']]);
+
+        if ($validated['status'] === 'approved') {
+            // Unlock the grades
+            \App\Models\Grade::where('teacher_id', $unlockRequest->teacher_id)
+                ->where('subject_id', $unlockRequest->subject_id)
+                ->where('section_id', $unlockRequest->section_id)
+                ->update(['is_finalized' => false]);
+            
+            // Bust caches
+            cache()->forget('teacher_dashboard_' . $unlockRequest->teacher_id);
+            cache()->forget('admin_heatmap');
+        }
+
+        return back()->with('success', 'Unlock request ' . $validated['status'] . '.');
     }
 }

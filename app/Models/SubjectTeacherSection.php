@@ -13,6 +13,14 @@ class SubjectTeacherSection extends Model
         'teacher_id',
         'section_id',
         'school_year',
+        'ww_max_scores',
+        'pt_max_scores',
+        'qa_max_score',
+    ];
+
+    protected $casts = [
+        'ww_max_scores' => 'array',
+        'pt_max_scores' => 'array',
     ];
 
     public function subject()

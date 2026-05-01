@@ -82,24 +82,47 @@ class GradeController extends Controller
         $subject = \App\Models\Subject::findOrFail($subjectId);
         $section = \App\Models\Section::with('students')->findOrFail($sectionId);
         
+        $sts = \App\Models\SubjectTeacherSection::where('subject_id', $subjectId)
+            ->where('section_id', $sectionId)
+            ->where('teacher_id', auth()->id())
+            ->firstOrFail();
+
         $students = $section->students->map(function($student) use ($subject, $section) {
-            $grade = \App\Models\Grade::firstOrCreate([
-                'student_id' => $student->id,
-                'subject_id' => $subject->id,
-                'section_id' => $section->id,
-                'teacher_id' => auth()->id(),
-                'grading_period_id' => 1, // Defaulting to 1 for now
-            ]);
+            $grade = \App\Models\Grade::firstOrCreate(
+                [
+                    'student_id' => $student->id,
+                    'subject_id' => $subject->id,
+                    'section_id' => $section->id,
+                    'teacher_id' => auth()->id(),
+                    'grading_period_id' => 1, // Defaulting to 1 for now
+                ],
+                [
+                    'grade' => 0,
+                    'written_work_scores' => [],
+                    'performance_task_scores' => [],
+                    'exam_score' => 0,
+                    'submitted_at' => now(),
+                ]
+            );
             
             $student->grade_record = $grade;
             return $student;
         });
 
-        return view('teacher.grades.sheet', compact('subject', 'section', 'students'));
+        return view('teacher.grades.sheet', compact('subject', 'section', 'students', 'sts'));
     }
 
     public function updateSheet(Request $request)
     {
+        // 1. Update the max scores
+        $stsId = $request->input('sts_id');
+        $sts = \App\Models\SubjectTeacherSection::findOrFail($stsId);
+        $sts->ww_max_scores = array_map('floatval', $request->input('max_scores.ww') ?? []);
+        $sts->pt_max_scores = array_map('floatval', $request->input('max_scores.pt') ?? []);
+        $sts->qa_max_score = floatval($request->input('max_scores.qa') ?? 0);
+        $sts->save();
+
+        // 2. Update student grades
         $data = $request->input('grades');
         $calcService = new \App\Services\GradeCalculationService();
 
@@ -115,7 +138,7 @@ class GradeController extends Controller
             $grade->performance_task_scores = array_map('floatval', $scores['pt'] ?? []);
             $grade->exam_score = isset($scores['qa']) ? floatval($scores['qa']) : 0;
             
-            // Recalculate final grade
+            // Recalculate final grade (Transmuted)
             $grade->grade = $calcService->calculate($grade);
             
             $grade->save();
@@ -126,5 +149,50 @@ class GradeController extends Controller
         cache()->forget('admin_heatmap');
 
         return back()->with('success', 'Grades updated successfully.');
+    }
+
+    public function finalizeSheet(Request $request)
+    {
+        // First update the sheet to save any latest changes
+        $this->updateSheet($request);
+
+        $data = $request->input('grades');
+        if (empty($data)) {
+            return back()->with('error', 'No grades to finalize.');
+        }
+
+        $gradeIds = array_keys($data);
+
+        \App\Models\Grade::whereIn('id', $gradeIds)
+            ->where('teacher_id', auth()->id())
+            ->update([
+                'is_finalized' => true,
+                'submitted_at' => now()
+            ]);
+
+        // Bust caches
+        cache()->forget('teacher_dashboard_' . auth()->id());
+        cache()->forget('admin_heatmap');
+
+        return back()->with('success', 'Grades finalized and submitted to adviser.');
+    }
+
+    public function requestUnlock(Request $request)
+    {
+        $validated = $request->validate([
+            'subject_id' => 'required|exists:subjects,id',
+            'section_id' => 'required|exists:sections,id',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        \App\Models\GradeUnlockRequest::create([
+            'teacher_id' => auth()->id(),
+            'subject_id' => $validated['subject_id'],
+            'section_id' => $validated['section_id'],
+            'reason' => $validated['reason'],
+            'status' => 'pending',
+        ]);
+
+        return back()->with('success', 'Unlock request sent to principal.');
     }
 }

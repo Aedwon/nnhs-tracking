@@ -22,20 +22,30 @@
                 </div>
             </div>
 
-            <!-- Legend -->
-            <div class="flex space-x-6 mb-8 px-4 border-2 border-navy bg-white p-4 inline-flex shadow-[4px_4px_0_0_#0B132B]">
-                <div class="flex items-center space-x-2">
-                    <div class="h-5 w-5 bg-navy border-2 border-navy"></div>
-                    <span class="text-xs font-bold text-navy uppercase tracking-widest">Finalized</span>
+            <div class="flex flex-wrap items-center justify-between gap-6 mb-8">
+                <div class="flex space-x-6 px-4 border-2 border-navy bg-white p-4 shadow-[4px_4px_0_0_#0B132B]">
+                    <div class="flex items-center space-x-2">
+                        <div class="h-5 w-5 bg-navy border-2 border-navy"></div>
+                        <span class="text-xs font-bold text-navy uppercase tracking-widest">Finalized</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="h-5 w-5 bg-crimson border-2 border-navy"></div>
+                        <span class="text-xs font-bold text-navy uppercase tracking-widest">In Progress</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="h-5 w-5 bg-eggshell border-2 border-navy"></div>
+                        <span class="text-xs font-bold text-navy uppercase tracking-widest">Not Started</span>
+                    </div>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <div class="h-5 w-5 bg-crimson border-2 border-navy"></div>
-                    <span class="text-xs font-bold text-navy uppercase tracking-widest">In Progress</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="h-5 w-5 bg-eggshell border-2 border-navy"></div>
-                    <span class="text-xs font-bold text-navy uppercase tracking-widest">Not Started</span>
-                </div>
+
+                <a href="{{ route('admin.unlock-requests') }}" class="relative bg-white border-2 border-navy p-4 font-display font-bold text-navy uppercase tracking-widest text-xs hover:bg-navy hover:text-eggshell transition-all shadow-[4px_4px_0_0_#0B132B] hover:shadow-none hover:translate-y-0.5 hover:translate-x-0.5">
+                    Unlock Requests
+                    @if($pendingRequestsCount > 0)
+                        <span class="absolute -top-3 -right-3 h-6 w-6 bg-crimson text-white border-2 border-navy flex items-center justify-center text-[10px]">
+                            {{ $pendingRequestsCount }}
+                        </span>
+                    @endif
+                </a>
             </div>
 
             <!-- Heatmap Grid -->
