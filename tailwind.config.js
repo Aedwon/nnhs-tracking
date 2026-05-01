@@ -12,7 +12,13 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['"DM Sans"', ...defaultTheme.fontFamily.sans],
+                display: ['Outfit', ...defaultTheme.fontFamily.sans],
+            },
+            colors: {
+                eggshell: '#FAFAFA',
+                navy: '#0B132B',
+                crimson: '#991B1B',
             },
         },
     },

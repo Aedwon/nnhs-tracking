@@ -8,7 +8,7 @@ Route::get('/test-view', function () {
 });
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function () {
@@ -32,8 +32,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:Teacher'])->prefix('teacher')->name('teacher.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Teacher\GradeController::class, 'dashboard'])->name('dashboard');
         Route::get('/grades', [\App\Http\Controllers\Teacher\GradeController::class, 'index'])->name('grades.index');
-        Route::get('/grades/create', [\App\Http\Controllers\Teacher\GradeController::class, 'create'])->name('grades.create');
-        Route::post('/grades', [\App\Http\Controllers\Teacher\GradeController::class, 'store'])->name('grades.store');
+        Route::get('/grades/sheet/{subject}/{section}', [\App\Http\Controllers\Teacher\GradeController::class, 'sheet'])->name('grades.sheet');
+        Route::post('/grades/sheet/update', [\App\Http\Controllers\Teacher\GradeController::class, 'updateSheet'])->name('grades.update-sheet');
     });
 });
 

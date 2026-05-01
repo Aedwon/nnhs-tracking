@@ -1,3 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Outfit:wght@400;600;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-eggshell text-navy font-sans antialiased;
+    }
+    
+    /* Global force sharp corners */
+    * {
+        @apply rounded-none !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-display tracking-tight text-navy;
+    }
+}

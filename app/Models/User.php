@@ -35,6 +35,16 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function advisedSections()
+    {
+        return $this->hasMany(Section::class, 'adviser_id');
+    }
+
+    public function subjectTeacherSections()
+    {
+        return $this->hasMany(SubjectTeacherSection::class, 'teacher_id');
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

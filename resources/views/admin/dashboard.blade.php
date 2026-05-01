@@ -4,102 +4,76 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Admin Analytics Dashboard') }}
             </h2>
-            <div class="text-sm font-medium text-gray-500">
-                Compliance Rate: <span class="text-indigo-600">{{ $complianceRate }}%</span>
-            </div>
         </div>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-indigo-500">
-                    <div class="text-sm font-medium text-gray-500 uppercase">Total Grade Submissions</div>
-                    <div class="mt-2 text-3xl font-bold text-gray-900">{{ $totalGrades }}</div>
-                    <div class="mt-4 text-xs text-gray-400">Successfully recorded in system</div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-emerald-500">
-                    <div class="text-sm font-medium text-gray-500 uppercase">On-Time Submissions</div>
-                    <div class="mt-2 text-3xl font-bold text-gray-900">{{ $onTimeGrades }}</div>
-                    <div class="mt-4 text-xs text-emerald-500">Great job! Teachers are complying.</div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-rose-500">
-                    <div class="text-sm font-medium text-gray-500 uppercase">Late Submissions</div>
-                    <div class="mt-2 text-3xl font-bold text-gray-900">{{ $lateGrades }}</div>
-                    <div class="mt-4 text-xs text-rose-500">Requiring immediate attention</div>
+            <!-- Heatmap Header -->
+            <div class="bg-white border-2 border-navy shadow-[8px_8px_0_0_#0B132B] mb-8">
+                <div class="p-8 flex items-center bg-eggshell/50">
+                    <div class="h-20 w-20 bg-crimson flex items-center justify-center text-white border-2 border-navy shadow-[4px_4px_0_0_#0B132B]">
+                        <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <div class="ml-8">
+                        <h3 class="text-3xl font-display font-bold text-navy tracking-tight uppercase">Principal's Monitoring Heatmap</h3>
+                        <p class="text-crimson font-bold uppercase tracking-widest text-xs mt-1">Real-time Grade Submission Status</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Frequent Late Uploaders -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 border-b border-gray-100">
-                        <h3 class="text-lg font-semibold text-gray-800">Top Frequent Late Uploaders</h3>
-                    </div>
-                    <div class="p-6">
-                        @if($frequentLateUploaders->count() > 0)
-                            <div class="flow-root">
-                                <ul role="list" class="-my-5 divide-y divide-gray-200">
-                                    @foreach($frequentLateUploaders as $uploader)
-                                        <li class="py-4">
-                                            <div class="flex items-center space-x-4">
-                                                <div class="flex-shrink-0">
-                                                    <span
-                                                        class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-rose-100 text-rose-600 font-bold">
-                                                        {{ strtoupper(substr($uploader->teacher->name, 0, 1)) }}
-                                                    </span>
-                                                </div>
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="text-sm font-medium text-gray-900 truncate">
-                                                        {{ $uploader->teacher->name }}
-                                                    </p>
-                                                    <p class="text-sm text-gray-500 truncate">
-                                                        {{ $uploader->teacher->email }}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <span
-                                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
-                                                        {{ $uploader->late_count }} Late
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @else
-                            <p class="text-gray-500 text-sm">No late uploads recorded.</p>
-                        @endif
-                    </div>
+            <!-- Legend -->
+            <div class="flex space-x-6 mb-8 px-4 border-2 border-navy bg-white p-4 inline-flex shadow-[4px_4px_0_0_#0B132B]">
+                <div class="flex items-center space-x-2">
+                    <div class="h-5 w-5 bg-navy border-2 border-navy"></div>
+                    <span class="text-xs font-bold text-navy uppercase tracking-widest">Finalized</span>
                 </div>
+                <div class="flex items-center space-x-2">
+                    <div class="h-5 w-5 bg-crimson border-2 border-navy"></div>
+                    <span class="text-xs font-bold text-navy uppercase tracking-widest">In Progress</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="h-5 w-5 bg-eggshell border-2 border-navy"></div>
+                    <span class="text-xs font-bold text-navy uppercase tracking-widest">Not Started</span>
+                </div>
+            </div>
 
-                <!-- Submission Trends -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 border-b border-gray-100">
-                        <h3 class="text-lg font-semibold text-gray-800">Submissions per Period</h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="space-y-4">
-                            @foreach($gradingPeriods as $period)
-                                <div>
-                                    <div class="flex justify-between text-sm mb-1">
-                                        <span class="text-gray-700">{{ $period->name }}</span>
-                                        <span class="font-medium text-gray-900">{{ $period->grades_count }} Uploads</span>
+            <!-- Heatmap Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                @foreach($heatmapData as $data)
+                    <div class="bg-white border-2 border-navy shadow-[4px_4px_0_0_#0B132B] flex flex-col">
+                        <div class="p-5 border-b-2 border-navy bg-eggshell/30 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-display font-bold text-navy text-xl uppercase tracking-widest">{{ $data['section'] }}</h4>
+                                <p class="text-xs text-navy/60 font-mono uppercase mt-1">{{ $data['grade_level'] }}</p>
+                            </div>
+                            <div class="h-10 w-10 bg-white border-2 border-navy flex items-center justify-center text-lg font-display font-bold text-navy shadow-[2px_2px_0_0_#0B132B]">
+                                {{ count($data['subjects']) }}
+                            </div>
+                        </div>
+                        <div class="p-6 grid grid-cols-4 gap-4">
+                            @foreach($data['subjects'] as $sub)
+                                <div class="group relative">
+                                    <div class="h-12 w-full border-2 border-navy transition-all duration-200 
+                                        {{ $sub['status'] == 'submitted' ? 'bg-navy' : ($sub['status'] == 'progress' ? 'bg-crimson' : 'bg-eggshell') }} hover:-translate-y-1 hover:shadow-[4px_4px_0_0_#0B132B]">
                                     </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="bg-indigo-600 h-2 rounded-full"
-                                            style="width: {{ $totalGrades > 0 ? ($period->grades_count / $totalGrades) * 100 : 0 }}%">
+                                    <!-- Tooltip -->
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-white border-2 border-navy text-navy text-xs invisible group-hover:visible z-10 shadow-[4px_4px_0_0_#0B132B]">
+                                        <div class="font-display font-bold mb-2 uppercase tracking-widest text-sm">{{ $sub['subject'] }}</div>
+                                        <div class="text-xs font-mono mb-3">Teacher: {{ $sub['teacher'] }}</div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="h-3 w-3 border border-navy {{ $sub['status'] == 'submitted' ? 'bg-navy' : ($sub['status'] == 'progress' ? 'bg-crimson' : 'bg-eggshell') }}"></span>
+                                            <span class="font-bold uppercase tracking-widest text-[10px]">{{ $sub['status'] }}</span>
                                         </div>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
+                        <div class="mt-auto p-4 bg-eggshell/30 border-t-2 border-navy flex justify-center">
+                            <button class="text-xs font-bold text-navy uppercase tracking-widest hover:text-crimson hover:bg-navy p-2 transition-all">View Full Section Report</button>
+                        </div>
                     </div>
-                </div>
+                @endforeach
             </div>
         </div>
     </div>

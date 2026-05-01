@@ -9,29 +9,34 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $totalGrades = \App\Models\Grade::count();
-        $lateGrades = \App\Models\Grade::where('submission_status', 'Late')->count();
-        $onTimeGrades = $totalGrades - $lateGrades;
+        $heatmapData = cache()->remember('admin_heatmap', 30, function () {
+            $sections = \App\Models\Section::with(['subjectTeacherSections.subject', 'subjectTeacherSections.teacher'])->get();
+            
+            $submissionStatus = \App\Models\Grade::select('subject_id', 'section_id', \Illuminate\Support\Facades\DB::raw('MAX(CASE WHEN is_finalized = true THEN 2 WHEN grade IS NOT NULL THEN 1 ELSE 0 END) as status_code'))
+                ->groupBy('subject_id', 'section_id')
+                ->get()
+                ->keyBy(fn($item) => $item->subject_id . '-' . $item->section_id);
 
-        $complianceRate = $totalGrades > 0 ? round(($onTimeGrades / $totalGrades) * 100, 2) : 100;
+            return $sections->map(function($section) use ($submissionStatus) {
+                $subjects = $section->subjectTeacherSections->map(function($sts) use ($section, $submissionStatus) {
+                    $key = $sts->subject_id . '-' . $section->id;
+                    $statusCode = $submissionStatus->get($key)->status_code ?? 0;
 
-        $frequentLateUploaders = \App\Models\Grade::where('submission_status', 'Late')
-            ->select('teacher_id', \Illuminate\Support\Facades\DB::raw('count(*) as late_count'))
-            ->groupBy('teacher_id')
-            ->orderBy('late_count', 'desc')
-            ->with('teacher')
-            ->take(5)
-            ->get();
+                    return [
+                        'subject' => $sts->subject->name,
+                        'teacher' => $sts->teacher->name,
+                        'status' => $statusCode == 2 ? 'submitted' : ($statusCode == 1 ? 'progress' : 'pending')
+                    ];
+                });
 
-        $gradingPeriods = \App\Models\GradingPeriod::withCount('grades')->get();
+                return [
+                    'section' => $section->name,
+                    'grade_level' => $section->grade_level,
+                    'subjects' => $subjects
+                ];
+            });
+        });
 
-        return view('admin.dashboard', compact(
-            'totalGrades',
-            'lateGrades',
-            'onTimeGrades',
-            'complianceRate',
-            'frequentLateUploaders',
-            'gradingPeriods'
-        ));
+        return view('admin.dashboard', compact('heatmapData'));
     }
 }
