@@ -22,6 +22,7 @@ class GradingPeriodController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'level' => 'required|in:JHS,SHS,BOTH',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'deadline_at' => 'required|date|after:start_date',
@@ -29,6 +30,7 @@ class GradingPeriodController extends Controller
 
         $period = \App\Models\GradingPeriod::create([
             'name' => $request->name,
+            'level' => $request->level,
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
             'is_active' => true,
@@ -40,7 +42,10 @@ class GradingPeriodController extends Controller
             'reminder_x_hours_before' => 24,
         ]);
 
-        \App\Services\AuditLogger::log('Grading Period Created', $period->id, ['name' => $period->name]);
+        \App\Services\AuditLogger::log('Grading Period Created', $period->id, [
+            'name' => $period->name,
+            'level' => $period->level
+        ]);
 
         return redirect()->route('admin.grading-periods.index')->with('success', 'Grading period and deadline created.');
     }

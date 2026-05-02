@@ -19,6 +19,9 @@
                     <x-nav-link :href="route('admin.teachers.index')" :active="request()->routeIs('admin.teachers.*')">
                         {{ __('Teachers') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('admin.sections.index')" :active="request()->routeIs('admin.sections.*')">
+                        {{ __('Sections') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('admin.grading-periods.index')"
                         :active="request()->routeIs('admin.grading-periods.*')">
                         {{ __('Periods & Deadlines') }}
@@ -29,14 +32,20 @@
                     </x-nav-link>
                     @endrole
 
-                    @role('Teacher')
+                    @role(['Teacher', 'Adviser'])
                     <x-nav-link :href="route('teacher.dashboard')" :active="request()->routeIs('teacher.dashboard')">
-                        {{ __('Teacher Dashboard') }}
+                        {{ __('Teacher Portal') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('teacher.grades.index')" :active="request()->routeIs('teacher.grades.*')">
-                        {{ __('My Grades') }}
+                    <x-nav-link :href="route('teacher.assignments.index')" :active="request()->routeIs('teacher.assignments.*')">
+                        {{ __('Claim Subjects') }}
                     </x-nav-link>
                     @endrole
+                    
+                    @if(auth()->user()->hasRole('Adviser') || (auth()->user()->hasRole('Teacher') && \App\Models\Section::where('adviser_id', auth()->id())->exists()))
+                    <x-nav-link :href="route('adviser.dashboard')" :active="request()->routeIs('adviser.*')">
+                        {{ __('Adviser Portal') }}
+                    </x-nav-link>
+                    @endif
                 </div>
             </div>
 

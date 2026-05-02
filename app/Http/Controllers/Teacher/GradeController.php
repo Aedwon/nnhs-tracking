@@ -3,7 +3,13 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Models\Grade;
+use App\Models\GradingPeriod;
+use App\Models\Section;
+use App\Models\Subject;
+use App\Models\Deadline;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class GradeController extends Controller
 {
@@ -13,186 +19,160 @@ class GradeController extends Controller
         $cacheKey = 'teacher_dashboard_' . $user->id;
 
         $data = cache()->remember($cacheKey, 30, function () use ($user) {
-            // 1. Subjects to Grade (as Teacher)
-            $subjectsToGrade = \App\Models\SubjectTeacherSection::with(['subject', 'section'])
+            // 1. My Subjects
+            $subjectsToGrade = Subject::with(['section' => function($q) {
+                $q->withCount('students');
+            }])
                 ->where('teacher_id', $user->id)
                 ->get();
 
-            $gradeCounts = \App\Models\Grade::where('teacher_id', $user->id)
+            $activePeriod = GradingPeriod::where('is_active', true)->first() ?? GradingPeriod::first();
+            $activePeriodId = $activePeriod ? $activePeriod->id : 1;
+
+            $gradeCounts = Grade::where('teacher_id', $user->id)
+                ->where('grading_period_id', $activePeriodId)
                 ->where('is_finalized', true)
-                ->select('subject_id', 'section_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+                ->select('subject_id', 'section_id', DB::raw('count(*) as count'))
                 ->groupBy('subject_id', 'section_id')
                 ->get()
                 ->keyBy(fn($item) => $item->subject_id . '-' . $item->section_id);
 
-            $subjectsToGrade->map(function ($sts) use ($gradeCounts) {
-                $key = $sts->subject_id . '-' . $sts->section_id;
+            foreach ($subjectsToGrade as $subject) {
+                $key = $subject->id . '-' . $subject->section_id;
                 $gradedCount = $gradeCounts->get($key)->count ?? 0;
-                $totalStudents = $sts->section->students()->count();
-                $sts->progress = $totalStudents > 0 ? round(($gradedCount / $totalStudents) * 100) : 0;
-                return $sts;
-            });
+                $totalStudents = $subject->section->students_count;
+                $subject->progress = $totalStudents > 0 ? round(($gradedCount / $totalStudents) * 100) : 0;
+            }
 
-            // 2. Sections to Consolidate (as Adviser)
-            $sectionsToAdvise = \App\Models\Section::withCount('subjectTeacherSections')
+            // 2. Sections I Advise (Monitoring)
+            $sectionsToAdvise = Section::with(['subjects.teacher'])
                 ->where('adviser_id', $user->id)
                 ->get();
 
-            $submittedPerSection = \App\Models\Grade::whereIn('section_id', $sectionsToAdvise->pluck('id'))
-                ->where('is_finalized', true)
-                ->select('section_id', \Illuminate\Support\Facades\DB::raw('count(distinct subject_id) as count'))
-                ->groupBy('section_id')
-                ->get()
-                ->keyBy('section_id');
+            if ($sectionsToAdvise->isNotEmpty()) {
+                $sectionIds = $sectionsToAdvise->pluck('id');
+                $finalizedStatuses = Grade::whereIn('section_id', $sectionIds)
+                    ->where('grading_period_id', $activePeriodId)
+                    ->where('is_finalized', true)
+                    ->select('subject_id', 'section_id')
+                    ->distinct()
+                    ->get()
+                    ->groupBy('section_id');
 
-            $sectionsToAdvise->map(function ($section) use ($submittedPerSection) {
-                $totalSubjects = $section->subject_teacher_sections_count;
-                $submittedCount = $submittedPerSection->get($section->id)->count ?? 0;
-                $section->consolidation_progress = $totalSubjects > 0 ? round(($submittedCount / $totalSubjects) * 100) : 0;
-                return $section;
-            });
+                foreach ($sectionsToAdvise as $section) {
+                    $sectionFinalized = $finalizedStatuses->get($section->id, collect());
+                    
+                    foreach ($section->subjects as $subject) {
+                        $subject->is_finalized = $sectionFinalized->contains('subject_id', $subject->id);
+                    }
 
-            $deadlines = \App\Models\Deadline::with('gradingPeriod')
+                    $totalExpected = $section->expected_subjects_count > 0 ? $section->expected_subjects_count : $section->subjects->count();
+                    $submittedCount = $section->subjects->where('is_finalized', true)->count();
+                    $section->consolidation_progress = $totalExpected > 0 ? round(($submittedCount / $totalExpected) * 100) : 0;
+                }
+            }
+
+            $deadlines = Deadline::with('gradingPeriod')
                 ->where('deadline_at', '>', now())
                 ->orderBy('deadline_at', 'asc')
                 ->get();
 
-            return compact('subjectsToGrade', 'sectionsToAdvise', 'deadlines');
+            return compact('subjectsToGrade', 'sectionsToAdvise', 'deadlines', 'activePeriod');
         });
 
         return view('teacher.dashboard', $data);
     }
 
-    public function index()
+    public function sheet($subjectId, $sectionId, $periodId = null)
     {
-        $grades = \App\Models\Grade::with(['student', 'subject'])
-            ->where('teacher_id', auth()->id())
-            ->paginate(20);
-        return view('teacher.grades.index', compact('grades'));
-    }
-
-    public function create()
-    {
-        $periods = \App\Models\GradingPeriod::where('is_active', true)->get();
-        return view('teacher.grades.create', compact('periods'));
-    }
-
-    public function sheet($subjectId, $sectionId)
-    {
-        $subject = \App\Models\Subject::findOrFail($subjectId);
-        $section = \App\Models\Section::with('students')->findOrFail($sectionId);
+        $subject = Subject::findOrFail($subjectId);
+        $section = Section::with('students')->findOrFail($sectionId);
         
-        $sts = \App\Models\SubjectTeacherSection::where('subject_id', $subjectId)
-            ->where('section_id', $sectionId)
-            ->where('teacher_id', auth()->id())
-            ->firstOrFail();
+        if ($subject->teacher_id != auth()->id() && $section->adviser_id != auth()->id()) {
+            abort(403);
+        }
 
-        $students = $section->students->map(function($student) use ($subject, $section) {
-            $grade = \App\Models\Grade::firstOrCreate(
-                [
-                    'student_id' => $student->id,
-                    'subject_id' => $subject->id,
-                    'section_id' => $section->id,
-                    'teacher_id' => auth()->id(),
-                    'grading_period_id' => 1, // Defaulting to 1 for now
-                ],
-                [
-                    'grade' => 0,
-                    'written_work_scores' => [],
-                    'performance_task_scores' => [],
-                    'exam_score' => 0,
-                    'submitted_at' => now(),
-                ]
-            );
-            
-            $student->grade_record = $grade;
+        $periods = GradingPeriod::where('level', $section->level)->orWhere('level', 'BOTH')->get();
+        $activePeriod = $periodId ? GradingPeriod::findOrFail($periodId) : ($periods->where('is_active', true)->first() ?? $periods->first());
+        $isReadOnly = $subject->teacher_id != auth()->id();
+
+        $studentIds = $section->students->pluck('id');
+        $allGrades = Grade::whereIn('student_id', $studentIds)
+            ->where('subject_id', $subjectId)
+            ->where('section_id', $sectionId)
+            ->get()
+            ->groupBy('student_id');
+
+        $toInsert = [];
+        $now = now();
+
+        foreach ($section->students as $student) {
+            $studentGrades = $allGrades->get($student->id, collect())->keyBy('grading_period_id');
+            foreach ($periods as $p) {
+                if (!$studentGrades->has($p->id)) {
+                    $toInsert[] = [
+                        'student_id' => $student->id,
+                        'subject_id' => $subject->id,
+                        'section_id' => $section->id,
+                        'teacher_id' => $subject->teacher_id,
+                        'grading_period_id' => $p->id,
+                        'grade' => 0,
+                        'written_work_scores' => json_encode([]),
+                        'performance_task_scores' => json_encode([]),
+                        'exam_score' => 0,
+                        'is_finalized' => false,
+                        'submitted_at' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+        }
+
+        if (!empty($toInsert)) {
+            Grade::insert($toInsert);
+            $allGrades = Grade::whereIn('student_id', $studentIds)
+                ->where('subject_id', $subjectId)
+                ->where('section_id', $sectionId)
+                ->get()
+                ->groupBy('student_id');
+        }
+
+        $students = $section->students->map(function($student) use ($allGrades, $activePeriod) {
+            $student->all_grades = $allGrades->get($student->id)->keyBy('grading_period_id');
+            $student->grade_record = $student->all_grades->get($activePeriod->id);
             return $student;
         });
 
-        return view('teacher.grades.sheet', compact('subject', 'section', 'students', 'sts'));
+        return view('teacher.grades.sheet', compact('subject', 'section', 'students', 'periods', 'activePeriod', 'isReadOnly'));
     }
 
     public function updateSheet(Request $request)
     {
-        // 1. Update the max scores
-        $stsId = $request->input('sts_id');
-        $sts = \App\Models\SubjectTeacherSection::findOrFail($stsId);
-        $sts->ww_max_scores = array_map('floatval', $request->input('max_scores.ww') ?? []);
-        $sts->pt_max_scores = array_map('floatval', $request->input('max_scores.pt') ?? []);
-        $sts->qa_max_score = floatval($request->input('max_scores.qa') ?? 0);
-        $sts->save();
-
-        // 2. Update student grades
         $data = $request->input('grades');
-        $calcService = new \App\Services\GradeCalculationService();
-
         foreach ($data as $gradeId => $scores) {
-            $grade = \App\Models\Grade::findOrFail($gradeId);
-            
-            // Check if finalized
-            if ($grade->is_finalized) {
-                continue; // Skip locked records
-            }
-
-            $grade->written_work_scores = array_map('floatval', $scores['ww'] ?? []);
-            $grade->performance_task_scores = array_map('floatval', $scores['pt'] ?? []);
-            $grade->exam_score = isset($scores['qa']) ? floatval($scores['qa']) : 0;
-            
-            // Recalculate final grade (Transmuted)
-            $grade->grade = $calcService->calculate($grade);
-            
+            $grade = Grade::findOrFail($gradeId);
+            if ($grade->teacher_id != auth()->id() || $grade->is_finalized) continue;
+            $grade->grade = isset($scores['grade']) ? floatval($scores['grade']) : 0;
             $grade->save();
         }
 
-        // Bust caches so dashboards show fresh data
         cache()->forget('teacher_dashboard_' . auth()->id());
         cache()->forget('admin_heatmap');
-
-        return back()->with('success', 'Grades updated successfully.');
+        return back()->with('success', 'Grades updated.');
     }
 
     public function finalizeSheet(Request $request)
     {
-        // First update the sheet to save any latest changes
         $this->updateSheet($request);
+        $gradeIds = array_keys($request->input('grades', []));
+        Grade::whereIn('id', $gradeIds)->where('teacher_id', auth()->id())->update([
+            'is_finalized' => true,
+            'submitted_at' => now()
+        ]);
 
-        $data = $request->input('grades');
-        if (empty($data)) {
-            return back()->with('error', 'No grades to finalize.');
-        }
-
-        $gradeIds = array_keys($data);
-
-        \App\Models\Grade::whereIn('id', $gradeIds)
-            ->where('teacher_id', auth()->id())
-            ->update([
-                'is_finalized' => true,
-                'submitted_at' => now()
-            ]);
-
-        // Bust caches
         cache()->forget('teacher_dashboard_' . auth()->id());
         cache()->forget('admin_heatmap');
-
-        return back()->with('success', 'Grades finalized and submitted to adviser.');
-    }
-
-    public function requestUnlock(Request $request)
-    {
-        $validated = $request->validate([
-            'subject_id' => 'required|exists:subjects,id',
-            'section_id' => 'required|exists:sections,id',
-            'reason' => 'required|string|max:500',
-        ]);
-
-        \App\Models\GradeUnlockRequest::create([
-            'teacher_id' => auth()->id(),
-            'subject_id' => $validated['subject_id'],
-            'section_id' => $validated['section_id'],
-            'reason' => $validated['reason'],
-            'status' => 'pending',
-        ]);
-
-        return back()->with('success', 'Unlock request sent to principal.');
+        return back()->with('success', 'Grades finalized.');
     }
 }

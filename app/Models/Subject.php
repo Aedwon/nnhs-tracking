@@ -6,21 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subject extends Model
 {
-    protected $fillable = [
-        'subject_code',
-        'name',
-        'written_weight',
-        'performance_weight',
-        'exam_weight',
-    ];
+    protected $fillable = ['name', 'section_id', 'teacher_id'];
+
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
 
     public function grades()
     {
         return $this->hasMany(Grade::class);
-    }
-
-    public function subjectTeacherSections()
-    {
-        return $this->hasMany(SubjectTeacherSection::class);
     }
 }

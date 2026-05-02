@@ -1,56 +1,65 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\TeacherController;
+use App\Http\Controllers\Admin\SectionController;
+use App\Http\Controllers\Admin\GradingPeriodController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Teacher\GradeController as TeacherGradeController;
+use App\Http\Controllers\Teacher\SubjectAssignmentController;
+use App\Http\Controllers\AdviserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/test-view', function () {
-    return view('test');
-});
-
 Route::get('/', function () {
-    return redirect()->route('login');
+    return view('welcome');
 });
-
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        if (auth()->user()->hasRole('Admin')) {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect()->route('teacher.dashboard');
+    })->name('dashboard');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Admin Routes
     Route::middleware(['role:Admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
-        Route::resource('teachers', \App\Http\Controllers\Admin\TeacherController::class);
-        Route::resource('grading-periods', \App\Http\Controllers\Admin\GradingPeriodController::class);
-        Route::get('/audit-logs', [\App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::resource('teachers', TeacherController::class);
+        Route::resource('sections', SectionController::class);
+        Route::resource('grading-periods', GradingPeriodController::class);
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/unlock-requests', [AdminDashboardController::class, 'unlockRequests'])->name('unlock-requests');
+        Route::post('/unlock-requests/{unlockRequest}', [AdminDashboardController::class, 'processUnlockRequest'])->name('unlock-requests.process');
+    });
+
+    // Adviser Routes
+    Route::middleware(['role:Teacher|Adviser'])->prefix('adviser')->name('adviser.')->group(function () {
+        Route::get('/dashboard', [AdviserController::class, 'index'])->name('dashboard');
+        Route::get('/sections/{section}/subjects', [AdviserController::class, 'manageSubjects'])->name('subjects');
+        Route::post('/sections/{section}/subjects', [AdviserController::class, 'updateSubjects'])->name('subjects.update');
     });
 
     // Teacher Routes
-    Route::middleware(['role:Teacher'])->prefix('teacher')->name('teacher.')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\Teacher\GradeController::class, 'dashboard'])->name('dashboard');
-        Route::get('/grades', [\App\Http\Controllers\Teacher\GradeController::class, 'index'])->name('grades.index');
-        Route::get('/grades/sheet/{subject}/{section}', [\App\Http\Controllers\Teacher\GradeController::class, 'sheet'])->name('grades.sheet');
-        Route::post('/grades/sheet/update', [\App\Http\Controllers\Teacher\GradeController::class, 'updateSheet'])->name('grades.update-sheet');
-        Route::post('/grades/sheet/finalize', [\App\Http\Controllers\Teacher\GradeController::class, 'finalizeSheet'])->name('grades.finalize-sheet');
-
-        // Adviser Routes
-        Route::get('/adviser/section/{section}/students', [\App\Http\Controllers\AdviserController::class, 'students'])->name('adviser.students');
-        Route::post('/adviser/section/{section}/students', [\App\Http\Controllers\AdviserController::class, 'storeStudent'])->name('adviser.store-student');
-        Route::get('/adviser/section/{section}/subjects', [\App\Http\Controllers\AdviserController::class, 'subjects'])->name('adviser.subjects');
-        Route::post('/adviser/section/{section}/subjects', [\App\Http\Controllers\AdviserController::class, 'storeSubject'])->name('adviser.store-subject');
+    Route::middleware(['role:Teacher|Adviser'])->prefix('teacher')->name('teacher.')->group(function () {
+        Route::get('/dashboard', [TeacherGradeController::class, 'dashboard'])->name('dashboard');
         
-        // Unlock Request
-        Route::post('/grades/request-unlock', [\App\Http\Controllers\Teacher\GradeController::class, 'requestUnlock'])->name('grades.request-unlock');
-    });
+        // Subject Assignments (Claiming slots)
+        Route::get('/assignments', [SubjectAssignmentController::class, 'index'])->name('assignments.index');
+        Route::post('/assignments/{subject}/claim', [SubjectAssignmentController::class, 'claim'])->name('assignments.claim');
+        Route::post('/assignments/{subject}/unclaim', [SubjectAssignmentController::class, 'unclaim'])->name('assignments.unclaim');
 
-    // Admin Unlock Requests
-    Route::middleware(['role:Admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/unlock-requests', [\App\Http\Controllers\Admin\DashboardController::class, 'unlockRequests'])->name('unlock-requests');
-        Route::post('/unlock-requests/{unlockRequest}/process', [\App\Http\Controllers\Admin\DashboardController::class, 'processUnlockRequest'])->name('unlock-requests.process');
+        // Grading
+        Route::get('/grades/sheet/{subject}/{section}/{period?}', [TeacherGradeController::class, 'sheet'])->name('grades.sheet');
+        Route::post('/grades/update', [TeacherGradeController::class, 'updateSheet'])->name('grades.update');
+        Route::post('/grades/finalize', [TeacherGradeController::class, 'finalizeSheet'])->name('grades.finalize');
+        Route::post('/grades/unlock-request', [TeacherGradeController::class, 'requestUnlock'])->name('grades.unlock-request');
     });
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

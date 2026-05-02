@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Section extends Model
 {
-    protected $fillable = ['name', 'grade_level', 'adviser_id'];
+    protected $fillable = ['name', 'grade_level', 'adviser_id', 'level', 'expected_subjects_count'];
 
     public function adviser()
     {
@@ -23,8 +23,8 @@ class Section extends Model
         return $this->hasMany(Grade::class);
     }
 
-    public function subjectTeacherSections()
+    public function subjects()
     {
-        return $this->hasMany(SubjectTeacherSection::class);
+        return $this->hasMany(Subject::class);
     }
 }

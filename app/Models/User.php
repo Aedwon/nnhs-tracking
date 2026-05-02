@@ -23,6 +23,7 @@ class User extends Authenticatable
         'email',
         'phone_number',
         'password',
+        'school_level',
     ];
 
     public function grades()

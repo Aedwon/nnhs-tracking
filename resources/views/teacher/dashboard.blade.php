@@ -1,133 +1,130 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Teacher Portal') }}
-        </h2>
+        <div class="flex justify-between items-center">
+            <h2 class="font-display font-bold text-xl text-navy uppercase tracking-widest">
+                {{ __('Unified Personnel Portal') }}
+            </h2>
+            <div class="flex space-x-4">
+                <a href="{{ route('teacher.assignments.index') }}" class="bg-navy text-eggshell px-6 py-2 font-display font-bold text-xs uppercase tracking-widest border-2 border-navy hover:bg-eggshell hover:text-navy transition-all shadow-[4px_4px_0_0_#0B132B]">
+                    + Claim New Subject
+                </a>
+                @if($sectionsToAdvise->isNotEmpty())
+                    <a href="{{ route('adviser.dashboard') }}" class="bg-crimson text-white px-6 py-2 font-display font-bold text-xs uppercase tracking-widest border-2 border-navy hover:bg-white hover:text-crimson transition-all shadow-[4px_4px_0_0_#0B132B]">
+                        Adviser Dashboard
+                    </a>
+                @endif
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Header Section -->
-            <div class="bg-white border-2 border-navy shadow-[8px_8px_0_0_#0B132B] mb-8">
-                <div class="p-8 flex items-center bg-eggshell/50">
-                    <div class="h-20 w-20 bg-navy flex items-center justify-center text-eggshell text-3xl font-display font-bold">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                    </div>
-                    <div class="ml-8">
-                        <h3 class="text-3xl font-display font-bold text-navy tracking-tight">{{ auth()->user()->name }}</h3>
-                        <p class="text-navy/70 font-bold uppercase tracking-widest text-xs mt-1">Unified Personnel Dashboard</p>
-                    </div>
-                </div>
-            </div>
-
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <!-- Sidebar: Deadlines -->
+                
+                <!-- Left Sidebar: Deadlines & Profile -->
                 <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white border-2 border-navy shadow-[4px_4px_0_0_#0B132B] p-6 text-center">
+                        <div class="h-20 w-20 bg-navy mx-auto mb-4 flex items-center justify-center text-eggshell text-3xl font-display font-bold">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </div>
+                        <h3 class="font-display font-bold text-navy text-xl uppercase leading-tight">{{ auth()->user()->name }}</h3>
+                        <p class="text-[10px] font-bold text-navy/40 uppercase tracking-widest mt-1">{{ auth()->user()->getRoleNames()->first() }}</p>
+                    </div>
+
                     <div class="bg-white border-2 border-navy shadow-[4px_4px_0_0_#0B132B]">
-                        <div class="p-4 border-b-2 border-navy bg-crimson flex items-center justify-between">
-                            <h3 class="font-display font-bold text-eggshell text-sm uppercase tracking-widest">Critical Deadlines</h3>
-                            <span class="flex h-3 w-3 bg-white border-2 border-navy"></span>
+                        <div class="p-4 border-b-2 border-navy bg-crimson">
+                            <h3 class="font-display font-bold text-white text-[10px] uppercase tracking-widest">Grading Deadlines</h3>
                         </div>
                         <div class="p-5 space-y-4">
                             @forelse($deadlines as $deadline)
-                                <div class="p-4 border-2 border-navy bg-eggshell/30">
-                                    <div class="text-[10px] text-crimson font-bold uppercase tracking-widest mb-1">
-                                        {{ $deadline->gradingPeriod->name }}
-                                    </div>
-                                    <div class="text-lg font-display font-bold text-navy leading-tight">
-                                        {{ $deadline->deadline_at->diffForHumans() }}
-                                    </div>
-                                    <div class="text-xs text-navy/60 mt-2 font-mono uppercase">
-                                        {{ $deadline->deadline_at->format('M d, Y') }}
-                                    </div>
+                                <div class="p-3 border-2 border-navy bg-eggshell/30">
+                                    <div class="text-[9px] text-crimson font-bold uppercase tracking-widest mb-1">{{ $deadline->gradingPeriod->name }}</div>
+                                    <div class="text-base font-display font-bold text-navy">{{ $deadline->deadline_at->diffForHumans() }}</div>
+                                    <div class="text-[10px] text-navy/40 mt-1 font-mono uppercase">{{ $deadline->deadline_at->format('M d, Y') }}</div>
                                 </div>
                             @empty
-                                <p class="text-sm text-navy/50 text-center py-4 font-mono uppercase tracking-widest">No active deadlines.</p>
+                                <p class="text-[10px] text-navy/30 text-center py-4 font-mono uppercase">No upcoming deadlines.</p>
                             @endforelse
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Content: Task Lists -->
-                <div class="lg:col-span-3 space-y-8">
+                <!-- Main Content -->
+                <div class="lg:col-span-3 space-y-12">
                     
-                    <!-- Subjects to Grade (Teacher Role) -->
-                    <div class="bg-white border-2 border-navy shadow-[4px_4px_0_0_#0B132B]">
-                        <div class="p-6 border-b-2 border-navy flex justify-between items-center bg-eggshell/30">
-                            <div>
-                                <h3 class="text-xl font-display font-bold text-navy uppercase tracking-widest">Subjects to Grade</h3>
-                                <p class="text-xs text-navy/60 font-mono mt-1 uppercase">Assigned Subjects & Progress</p>
-                            </div>
-                            <span class="px-3 py-1 bg-navy text-eggshell text-[10px] font-bold uppercase tracking-widest">Teacher Role</span>
+                    <!-- My Subjects -->
+                    <section>
+                        <div class="flex justify-between items-end mb-6 border-b-2 border-navy/10 pb-4">
+                            <h3 class="font-display font-bold text-navy text-2xl uppercase tracking-widest">My Active Load</h3>
+                            <span class="text-[10px] font-bold text-navy/40 uppercase">Period: {{ $activePeriod->name }}</span>
                         </div>
-                        <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                @foreach($subjectsToGrade as $sts)
-                                    <div class="group p-5 border-2 border-navy bg-white hover:bg-eggshell hover:shadow-[4px_4px_0_0_#0B132B] hover:-translate-y-1 transition-all duration-200">
-                                        <div class="flex justify-between items-start mb-6">
-                                            <div>
-                                                <h4 class="font-display font-bold text-navy text-xl leading-tight uppercase">{{ $sts->subject->name }}</h4>
-                                                <span class="text-xs font-mono font-bold text-navy/60">{{ $sts->section->name }} • {{ $sts->subject->subject_code }}</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <span class="text-2xl font-display font-bold text-navy">{{ $sts->progress }}%</span>
-                                                <p class="text-[10px] font-bold text-navy/60 uppercase tracking-widest">Progress</p>
-                                            </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            @forelse($subjectsToGrade as $subject)
+                                <div class="bg-white border-2 border-navy shadow-[6px_6px_0_0_#0B132B] p-6 hover:-translate-y-1 transition-transform group">
+                                    <div class="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h4 class="font-display font-bold text-navy text-xl uppercase leading-tight">{{ $subject->name }}</h4>
+                                            <p class="font-mono text-xs text-navy/60 uppercase">{{ $subject->section->name }}</p>
                                         </div>
-                                        
-                                        <div class="w-full bg-eggshell border-2 border-navy h-4 mb-6 relative">
-                                            <div class="bg-navy h-full transition-all duration-1000 border-r-2 border-navy" style="width: {{ $sts->progress }}%"></div>
+                                        <div class="text-right">
+                                            <div class="text-2xl font-display font-bold text-navy">{{ $subject->progress }}%</div>
+                                            <p class="text-[8px] font-bold text-navy/40 uppercase tracking-tighter">Grading Progress</p>
                                         </div>
-
-                                        <a href="{{ route('teacher.grades.sheet', [$sts->subject_id, $sts->section_id]) }}" class="block text-center py-3 bg-white border-2 border-navy text-navy text-xs font-bold hover:bg-navy hover:text-eggshell transition-colors uppercase tracking-widest">
-                                            Enter Grades
-                                        </a>
                                     </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                                    
+                                    <div class="w-full bg-eggshell border-2 border-navy h-4 mb-8 relative overflow-hidden">
+                                        <div class="bg-navy h-full transition-all duration-700" style="width: {{ $subject->progress }}%"></div>
+                                    </div>
 
-                    <!-- Sections to Advise (Adviser Role) -->
-                    @if($sectionsToAdvise->isNotEmpty())
-                    <div class="bg-white border-2 border-navy shadow-[4px_4px_0_0_#0B132B]">
-                        <div class="p-6 border-b-2 border-navy flex justify-between items-center bg-eggshell/30">
-                            <div>
-                                <h3 class="text-xl font-display font-bold text-navy uppercase tracking-widest">Sections to Advise</h3>
-                                <p class="text-xs text-navy/60 font-mono mt-1 uppercase">Monitor Consolidation</p>
-                            </div>
-                            <span class="px-3 py-1 bg-navy text-eggshell text-[10px] font-bold uppercase tracking-widest">Adviser Role</span>
+                                    <div class="flex space-x-3">
+                                        <a href="{{ route('teacher.grades.sheet', [$subject->id, $subject->section_id]) }}" class="flex-grow bg-navy text-eggshell text-center py-3 font-display font-bold text-[10px] uppercase tracking-widest border-2 border-navy hover:bg-eggshell hover:text-navy transition-colors">
+                                            Open Grade Sheet
+                                        </a>
+                                        <form action="{{ route('teacher.assignments.unclaim', $subject) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="px-4 py-3 border-2 border-navy/10 text-navy/40 hover:text-crimson hover:border-crimson transition-colors text-[10px] font-bold uppercase" title="Unclaim Subject">
+                                                ×
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="col-span-full py-20 text-center bg-eggshell/20 border-2 border-dashed border-navy/10">
+                                    <p class="font-mono text-xs text-navy/40 uppercase tracking-widest mb-4">No subjects claimed yet.</p>
+                                    <a href="{{ route('teacher.assignments.index') }}" class="text-navy font-bold text-[10px] uppercase underline underline-offset-4 decoration-2 decoration-crimson hover:text-crimson transition-colors">
+                                        Browse Available Sections →
+                                    </a>
+                                </div>
+                            @endforelse
                         </div>
-                        <div class="p-6 space-y-4">
+                    </section>
+
+                    <!-- Advising Overview (Quick Stats) -->
+                    @if($sectionsToAdvise->isNotEmpty())
+                    <section>
+                        <h3 class="font-display font-bold text-navy text-sm uppercase tracking-widest mb-6 border-l-4 border-crimson pl-4">Advised Sections Progress</h3>
+                        <div class="space-y-4">
                             @foreach($sectionsToAdvise as $section)
-                                <div class="flex items-center space-x-6 p-4 border-2 border-navy bg-white">
-                                    <div class="flex-shrink-0 h-14 w-14 bg-navy flex items-center justify-center text-eggshell font-display font-bold text-2xl border-2 border-navy">
-                                        {{ substr($section->name, 0, 1) }}
+                                <div class="bg-white border-2 border-navy p-5 flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-8">
+                                    <div class="md:w-1/4">
+                                        <h4 class="font-display font-bold text-navy text-lg uppercase leading-tight">{{ $section->name }}</h4>
+                                        <p class="text-[10px] font-bold text-navy/40 uppercase">Consolidation: {{ $section->consolidation_progress }}%</p>
                                     </div>
                                     <div class="flex-grow">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <h4 class="font-display font-bold text-navy uppercase tracking-widest">{{ $section->name }} <span class="text-xs font-mono font-normal text-navy/60">({{ $section->grade_level }})</span></h4>
-                                            <span class="text-sm font-bold text-navy font-mono">{{ $section->consolidation_progress }}% Consolidated</span>
-                                        </div>
-                                        <div class="w-full bg-eggshell border-2 border-navy h-4 relative">
-                                            <div class="bg-navy h-full transition-all duration-1000 border-r-2 border-navy" style="width: {{ $section->consolidation_progress }}%"></div>
+                                        <div class="w-full bg-eggshell border-2 border-navy h-4 overflow-hidden relative">
+                                            <div class="bg-crimson h-full transition-all duration-700" style="width: {{ $section->consolidation_progress }}%"></div>
                                         </div>
                                     </div>
-                                    <div class="flex-shrink-0 flex space-x-2">
-                                        <a href="{{ route('teacher.adviser.students', $section) }}" title="Manage Students" class="p-3 bg-white border-2 border-navy text-navy hover:bg-navy hover:text-eggshell transition shadow-[2px_2px_0_0_#0B132B] hover:shadow-none hover:translate-y-0.5 hover:translate-x-0.5">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                    <div class="md:w-1/4 flex justify-end">
+                                        <a href="{{ route('adviser.dashboard') }}" class="text-[10px] font-bold text-navy uppercase underline underline-offset-4 decoration-navy/20 hover:text-crimson hover:decoration-crimson transition-all">
+                                            View Details →
                                         </a>
-                                        <a href="{{ route('teacher.adviser.subjects', $section) }}" title="Manage Subjects" class="p-3 bg-white border-2 border-navy text-navy hover:bg-navy hover:text-eggshell transition shadow-[2px_2px_0_0_#0B132B] hover:shadow-none hover:translate-y-0.5 hover:translate-x-0.5">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                        </a>
-                                        <button title="View Report" class="p-3 bg-white border-2 border-navy text-navy hover:bg-navy hover:text-eggshell transition shadow-[2px_2px_0_0_#0B132B] hover:shadow-none hover:translate-y-0.5 hover:translate-x-0.5">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        </button>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
-                    </div>
+                    </section>
                     @endif
 
                 </div>

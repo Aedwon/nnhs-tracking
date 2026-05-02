@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class GradingPeriod extends Model
 {
-    protected $fillable = ['name', 'start_date', 'end_date', 'is_active'];
+    protected $fillable = ['name', 'start_date', 'end_date', 'is_active', 'level'];
 
     public function deadlines()
     {
